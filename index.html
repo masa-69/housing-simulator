@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>住宅購入 資金計画シミュレーター</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+  background: #f5f4f0;
+  color: #1a1a18;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.container { max-width: 760px; margin: 0 auto; }
+.header { text-align: center; margin-bottom: 2rem; }
+.header h1 { font-size: 22px; font-weight: 500; color: #1a1a18; margin-bottom: 6px; }
+.header p { font-size: 13px; color: #888780; }
+.tab-row {
+  display: flex; gap: 0; margin-bottom: 1.25rem;
+  border: 0.5px solid #d3d1c7; border-radius: 10px; overflow: hidden;
+  background: #e8e7e2;
+}
+.tab {
+  flex: 1; padding: 10px 6px; font-size: 13px; text-align: center;
+  cursor: pointer; background: #e8e7e2; color: #5f5e5a;
+  border: none; transition: background 0.15s; font-family: inherit;
+}
+.tab.active { background: #fff; color: #1a1a18; font-weight: 500; }
+.tab:hover:not(.active) { background: #dddcd8; }
+.section {
+  background: #fff; border: 0.5px solid #d3d1c7;
+  border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;
+}
+.section-title {
+  font-size: 12px; font-weight: 500; color: #888780;
+  margin-bottom: 1rem; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 13px; color: #5f5e5a; }
+.input-group { display: flex; align-items: center; gap: 6px; }
+.input-group input, .input-group select,
+.field select { font-size: 15px; padding: 8px 10px; border: 0.5px solid #b4b2a9;
+  border-radius: 8px; background: #f5f4f0; color: #1a1a18; width: 100%;
+  font-family: inherit; outline: none; transition: border 0.15s; }
+.input-group input:focus, .input-group select:focus, .field select:focus {
+  border-color: #7f77dd; box-shadow: 0 0 0 2px rgba(127,119,221,0.15);
+}
+.unit { font-size: 13px; color: #888780; white-space: nowrap; }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1rem; }
+.card { background: #f5f4f0; border-radius: 8px; padding: 0.875rem; }
+.card-label { font-size: 12px; color: #5f5e5a; margin-bottom: 6px; line-height: 1.4; }
+.card-value { font-size: 20px; font-weight: 500; color: #1a1a18; }
+.card-sub { font-size: 11px; color: #888780; margin-top: 3px; }
+.card.ok .card-value { color: #0f6e56; }
+.card.warn .card-value { color: #ba7517; }
+.card.ng .card-value { color: #a32d2d; }
+.bar-wrap { margin: 1rem 0; }
+.bar-label { display: flex; justify-content: space-between; font-size: 12px; color: #5f5e5a; margin-bottom: 6px; }
+.bar-bg { height: 12px; background: #e8e7e2; border-radius: 6px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 6px; transition: width 0.35s; }
+.bar-fill.ok { background: #1d9e75; }
+.bar-fill.warn { background: #ef9f27; }
+.bar-fill.ng { background: #e24b4a; }
+.advice { padding: 0.875rem; border-radius: 8px; font-size: 13px; line-height: 1.7; margin-top: 0.75rem; }
+.advice.ok { background: #e1f5ee; color: #085041; border-left: 3px solid #1d9e75; }
+.advice.warn { background: #faeeda; color: #633806; border-left: 3px solid #ef9f27; }
+.advice.ng { background: #fcebeb; color: #791f1f; border-left: 3px solid #e24b4a; }
+.repay-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.repay-table th { text-align: right; font-weight: 500; padding: 8px; color: #5f5e5a; border-bottom: 0.5px solid #d3d1c7; font-size: 12px; }
+.repay-table th:first-child { text-align: left; }
+.repay-table td { text-align: right; padding: 8px; color: #1a1a18; }
+.repay-table td:first-child { text-align: left; color: #5f5e5a; }
+.repay-table tr:hover td { background: #f5f4f0; }
+.divider { height: 0.5px; background: #d3d1c7; margin: 1rem 0; }
+.total-cost { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; }
+.total-cost span:first-child { font-size: 14px; color: #5f5e5a; }
+.total-cost span:last-child { font-size: 17px; font-weight: 500; color: #1a1a18; }
+.misc-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 13px; padding: 7px 0; border-bottom: 0.5px solid #e8e7e2; gap: 12px; }
+.misc-row span:first-child { color: #5f5e5a; }
+.misc-row span:last-child { font-weight: 500; white-space: nowrap; }
+.extra-cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 8px; }
+.footer { text-align: center; margin-top: 2.5rem; font-size: 12px; color: #888780; line-height: 1.8; }
+@media (max-width: 600px) {
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .row { grid-template-columns: 1fr; }
+  .tab { font-size: 11px; padding: 9px 4px; }
+  .extra-cards { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>住宅購入 資金計画シミュレーター</h1>
+    <p>無理のない住宅購入をサポートする試算ツールです。すべての数値は概算です。</p>
+  </div>
+
+  <div class="tab-row">
+    <button class="tab active" onclick="showTab('basic')">① 基本情報</button>
+    <button class="tab" onclick="showTab('repay')">② 返済シミュレーション</button>
+    <button class="tab" onclick="showTab('misc')">③ 諸費用・頭金</button>
+    <button class="tab" onclick="showTab('reverse')">④ 逆算</button>
+  </div>
+
+  <!-- TAB 1 -->
+  <div id="tab-basic">
+    <div class="section">
+      <div class="section-title">収入・物件情報</div>
+      <div class="row">
+        <div class="field">
+          <label>世帯年収</label>
+          <div class="input-group"><input type="number" id="income" value="600" min="100" max="5000" oninput="calc()"><span class="unit">万円</span></div>
+        </div>
+        <div class="field">
+          <label>物件価格</label>
+          <div class="input-group"><input type="number" id="price" value="4000" min="500" max="30000" oninput="calc()"><span class="unit">万円</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>頭金</label>
+          <div class="input-group"><input type="number" id="down" value="400" min="0" max="10000" oninput="calc()"><span class="unit">万円</span></div>
+        </div>
+        <div class="field">
+          <label>借入期間</label>
+          <select id="years" onchange="calc()">
+            <option value="20">20年</option>
+            <option value="25">25年</option>
+            <option value="30" selected>30年</option>
+            <option value="35">35年</option>
+          </select>
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:0">
+        <div class="field">
+          <label>金利（年）</label>
+          <div class="input-group"><input type="number" id="rate" value="1.5" min="0.1" max="8" step="0.1" oninput="calc()"><span class="unit">%</span></div>
+        </div>
+        <div class="field">
+          <label>他の借入（月額）</label>
+          <div class="input-group"><input type="number" id="other" value="0" min="0" max="50" oninput="calc()"><span class="unit">万円</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">月々の返済額</div>
+        <div class="card-value" id="r-monthly">—</div>
+        <div class="card-sub">万円 / 月</div>
+      </div>
+      <div class="card" id="card-ratio">
+        <div class="card-label">返済比率</div>
+        <div class="card-value" id="r-ratio">—</div>
+        <div class="card-sub">年収に対する割合</div>
+      </div>
+      <div class="card">
+        <div class="card-label">借入額</div>
+        <div class="card-value" id="r-loan">—</div>
+        <div class="card-sub">万円</div>
+      </div>
+      <div class="card">
+        <div class="card-label">年収倍率</div>
+        <div class="card-value" id="r-times">—</div>
+        <div class="card-sub">倍（目安6倍以下）</div>
+      </div>
+    </div>
+
+    <div class="bar-wrap">
+      <div class="bar-label"><span>返済比率の目安</span><span id="bar-pct">0%</span></div>
+      <div class="bar-bg"><div class="bar-fill ok" id="bar-fill" style="width:0%"></div></div>
+      <div style="display:flex; font-size:11px; color:#888780; margin-top:5px; gap:12px;">
+        <span style="color:#1d9e75">●25%以下：ゆとり</span>
+        <span style="color:#ef9f27">●26〜35%：注意</span>
+        <span style="color:#e24b4a">●36%超：要検討</span>
+      </div>
+    </div>
+
+    <div class="advice ok" id="advice-box">上の情報を入力してください。リアルタイムで診断します。</div>
+  </div>
+
+  <!-- TAB 2 -->
+  <div id="tab-repay" style="display:none">
+    <div class="section">
+      <div class="section-title">借入期間別 返済パターン比較</div>
+      <div style="overflow-x:auto">
+        <table class="repay-table">
+          <thead>
+            <tr>
+              <th>借入期間</th>
+              <th>月返済額</th>
+              <th>返済比率</th>
+              <th>総支払額</th>
+              <th>利息総額</th>
+            </tr>
+          </thead>
+          <tbody id="repay-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">繰り上げ返済シミュレーション</div>
+      <div class="row" style="margin-bottom:14px">
+        <div class="field">
+          <label>毎年の繰り上げ返済額</label>
+          <div class="input-group"><input type="number" id="extra" value="0" min="0" max="500" oninput="calcExtra()"><span class="unit">万円</span></div>
+        </div>
+        <div class="field">
+          <label>繰り上げ開始時期</label>
+          <select id="extraStart" onchange="calcExtra()">
+            <option value="1">1年目から</option>
+            <option value="3">3年目から</option>
+            <option value="5">5年目から</option>
+            <option value="10">10年目から</option>
+          </select>
+        </div>
+      </div>
+      <div id="extra-result"></div>
+    </div>
+  </div>
+
+  <!-- TAB 3 -->
+  <div id="tab-misc" style="display:none">
+    <div class="section">
+      <div class="section-title">必要な自己資金の目安（概算）</div>
+      <div id="misc-list"></div>
+      <div class="divider"></div>
+      <div class="total-cost"><span>諸費用合計（概算）</span><span id="misc-total">—</span></div>
+      <div class="total-cost"><span>頭金</span><span id="misc-down2">—</span></div>
+      <div class="total-cost" style="border-top:0.5px solid #d3d1c7; padding-top:1rem; margin-top:0.5rem;">
+        <span style="font-weight:500; color:#1a1a18; font-size:15px">必要自己資金（合計）</span>
+        <span id="misc-sum" style="font-size:22px; font-weight:500; color:#1a1a18">—</span>
+      </div>
+    </div>
+    <div class="advice ok" id="misc-advice">物件価格と頭金を①タブに入力してください。</div>
+  </div>
+
+  <!-- TAB 4 -->
+  <div id="tab-reverse" style="display:none">
+    <div class="section">
+      <div class="section-title">月々の支払いから購入限度額を逆算</div>
+      <div class="row" style="margin-bottom:14px">
+        <div class="field">
+          <label>無理のない月々の返済額</label>
+          <div class="input-group"><input type="number" id="rev-monthly" value="10" min="1" max="100" oninput="calcReverse()"><span class="unit">万円</span></div>
+        </div>
+        <div class="field">
+          <label>返済比率の上限</label>
+          <select id="rev-ratio" onchange="calcReverse()">
+            <option value="20">20%（ゆとり重視）</option>
+            <option value="25" selected>25%（標準的）</option>
+            <option value="30">30%（上限目安）</option>
+            <option value="35">35%（金融機関上限）</option>
+          </select>
+        </div>
+      </div>
+      <div id="reverse-result"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">年収倍率別 購入目安</div>
+      <div id="income-guide"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>このシミュレーターは概算値であり、実際の融資条件・審査結果を保証するものではありません。</p>
+    <p>詳細は担当の不動産会社・金融機関にご相談ください。</p>
+  </div>
+</div>
+
+<script>
+function showTab(t) {
+  ['basic','repay','misc','reverse'].forEach(id => {
+    document.getElementById('tab-'+id).style.display = id===t?'':'none';
+  });
+  document.querySelectorAll('.tab').forEach((el,i) => {
+    el.classList.toggle('active', ['basic','repay','misc','reverse'][i]===t);
+  });
+  if(t==='repay') { calcRepayTable(); calcExtra(); }
+  if(t==='misc') calcMisc();
+  if(t==='reverse') calcReverse();
+}
+
+function getVal(id) { return parseFloat(document.getElementById(id).value)||0; }
+
+function monthlyPayment(loan, annualRate, years) {
+  const r = annualRate/100/12;
+  const n = years*12;
+  if(r===0) return loan*10000/n/10000;
+  return loan*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1);
+}
+
+function fmt(n) { return n.toLocaleString('ja-JP',{maximumFractionDigits:1}); }
+function fmtM(n) { return (Math.round(n*10)/10).toFixed(1); }
+
+function calc() {
+  const income=getVal('income'), price=getVal('price'), down=getVal('down');
+  const years=parseInt(document.getElementById('years').value);
+  const rate=getVal('rate'), other=getVal('other');
+  const loan=price-down;
+  if(loan<=0||income<=0) return;
+  const m=monthlyPayment(loan,rate,years);
+  const monthly=Math.round(m*100)/100;
+  const ratio=(monthly+other)*12/income*100;
+  const times=loan/income;
+  document.getElementById('r-monthly').textContent=fmtM(monthly);
+  document.getElementById('r-loan').textContent=fmt(loan);
+  document.getElementById('r-times').textContent=(Math.round(times*10)/10).toFixed(1)+'倍';
+  const ratioR=Math.round(ratio*10)/10;
+  document.getElementById('r-ratio').textContent=ratioR.toFixed(1)+'%';
+  document.getElementById('bar-pct').textContent=ratioR.toFixed(1)+'%';
+  const pct=Math.min(ratioR/40*100,100);
+  const fill=document.getElementById('bar-fill');
+  fill.style.width=pct+'%';
+  let cls,msg;
+  if(ratio<=25){
+    cls='ok'; msg='返済比率は25%以下です — ゆとりのある資金計画といえます。急な出費や将来の教育費にも対応しやすい水準です。';
+    fill.className='bar-fill ok';
+  } else if(ratio<=35){
+    cls='warn'; msg='返済比率が25〜35%の範囲です。住宅ローンは可能ですが、生活費・貯蓄・教育費への影響を慎重にご確認ください。';
+    fill.className='bar-fill warn';
+  } else {
+    cls='ng'; msg='返済比率が35%を超えています。家計への負担が大きくなる可能性があります。頭金の増額・借入期間の延長・物件価格の見直しをご検討ください。';
+    fill.className='bar-fill ng';
+  }
+  document.getElementById('card-ratio').className='card '+cls;
+  document.getElementById('advice-box').className='advice '+cls;
+  document.getElementById('advice-box').textContent=msg;
+}
+
+function calcRepayTable() {
+  const income=getVal('income'), price=getVal('price'), down=getVal('down'), rate=getVal('rate');
+  const loan=price-down;
+  if(loan<=0) return;
+  const tbody=document.getElementById('repay-tbody');
+  tbody.innerHTML='';
+  [20,25,30,35].forEach(y=>{
+    const m=monthlyPayment(loan,rate,y);
+    const total=m*y*12*10000;
+    const interest=total-loan*10000*10000;
+    const ratio=(m*12/income)*100;
+    const color=ratio<=25?'#1d9e75':ratio<=35?'#ba7517':'#a32d2d';
+    tbody.innerHTML+=`<tr>
+      <td>${y}年</td>
+      <td style="font-weight:500">${fmtM(m)}万円</td>
+      <td style="color:${color};font-weight:500">${(Math.round(ratio*10)/10).toFixed(1)}%</td>
+      <td>${Math.round(m*y*12).toLocaleString()}万円</td>
+      <td style="color:#5f5e5a">${Math.round(m*y*12-loan).toLocaleString()}万円</td>
+    </tr>`;
+  });
+}
+
+function calcExtra() {
+  const price=getVal('price'), down=getVal('down'), rate=getVal('rate');
+  const years=parseInt(document.getElementById('years').value);
+  const extra=getVal('extra')*10000;
+  const start=parseInt(document.getElementById('extraStart').value);
+  const loan=(price-down)*10000;
+  if(loan<=0){ document.getElementById('extra-result').innerHTML=''; return; }
+  const r=rate/100/12, n=years*12;
+  const mBase=r===0?loan/n:loan*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1);
+  let balance=loan, months=0, totalPaid=0;
+  for(let mo=1;mo<=n;mo++){
+    if(balance<=0) break;
+    const intP=balance*r, prinP=mBase-intP;
+    balance-=prinP; totalPaid+=mBase; months++;
+    const yr=Math.ceil(mo/12);
+    if(yr>=start&&mo%12===0&&extra>0){
+      if(balance>extra){ balance-=extra; totalPaid+=extra; } else { totalPaid+=balance; balance=0; }
+    }
+    if(balance<=0) break;
+  }
+  const noExtra=mBase*n;
+  const saving=noExtra-totalPaid;
+  const shortYears=years-Math.ceil(months/12);
+  const el=document.getElementById('extra-result');
+  if(extra===0){
+    el.innerHTML='<p style="font-size:13px;color:#888780">繰り上げ返済額を入力すると効果を試算します。</p>';
+    return;
+  }
+  el.innerHTML=`<div class="extra-cards">
+    <div class="card"><div class="card-label">完済までの期間</div><div class="card-value ok">${Math.ceil(months/12)}年</div><div class="card-sub">${shortYears>0?shortYears+'年短縮':'変化なし'}</div></div>
+    <div class="card"><div class="card-label">利息の節約額</div><div class="card-value ok">${Math.round(saving/10000).toLocaleString()}万円</div><div class="card-sub">おトクになる金額</div></div>
+    <div class="card"><div class="card-label">総支払額</div><div class="card-value">${Math.round(totalPaid/10000).toLocaleString()}万円</div><div class="card-sub">元：${Math.round(noExtra/10000).toLocaleString()}万円</div></div>
+  </div>`;
+}
+
+function calcMisc() {
+  const price=getVal('price'), down=getVal('down');
+  if(price<=0) return;
+  const items=[
+    {name:'仲介手数料（税込）',amt:price*0.033+6.6,note:'売買価格×3%+6万円（税込）'},
+    {name:'登記費用（概算）',amt:price*0.15,note:'所有権移転・抵当権設定など'},
+    {name:'住宅ローン諸費用',amt:price*0.0165,note:'事務手数料・保証料など'},
+    {name:'火災保険（10年）',amt:20,note:'建物・家財の目安'},
+    {name:'印紙税・その他',amt:5,note:'売買契約書・金消契約書等'},
+  ];
+  let total=0;
+  const list=document.getElementById('misc-list');
+  list.innerHTML='';
+  items.forEach(item=>{
+    total+=item.amt;
+    list.innerHTML+=`<div class="misc-row"><span>${item.name}<br><span style="font-size:11px;color:#888780">${item.note}</span></span><span>${Math.round(item.amt).toLocaleString()}万円</span></div>`;
+  });
+  document.getElementById('misc-total').textContent=Math.round(total).toLocaleString()+'万円';
+  document.getElementById('misc-down2').textContent=Math.round(down).toLocaleString()+'万円';
+  document.getElementById('misc-sum').textContent=Math.round(total+down).toLocaleString()+'万円';
+  let cls,adv;
+  if(down/price>=0.1){ cls='ok'; adv=`頭金は物件価格の${Math.round(down/price*100)}%です。住宅ローン審査でも有利に働きます。諸費用と合わせた自己資金の準備ができています。`; }
+  else if(down>0){ cls='warn'; adv=`頭金は物件価格の${Math.round(down/price*100)}%です。10%以上を目標に貯蓄を検討するとより安定した計画になります。`; }
+  else { cls='warn'; adv='フルローンの場合は諸費用分（物件価格の約5〜8%）の自己資金を確保することをおすすめします。'; }
+  document.getElementById('misc-advice').className='advice '+cls;
+  document.getElementById('misc-advice').textContent=adv;
+}
+
+function calcReverse() {
+  const income=getVal('income'), rate=getVal('rate');
+  const revM=getVal('rev-monthly');
+  const revRatio=getVal('rev-ratio');
+  const years=parseInt(document.getElementById('years').value);
+  const maxByRatio=income/12*(revRatio/100);
+  const targetM=Math.min(revM,maxByRatio);
+  const r=rate/100/12, n=years*12;
+  function loanFromMonthly(m){
+    if(r===0) return m*n*10000;
+    return m*10000*(Math.pow(1+r,n)-1)/(r*Math.pow(1+r,n));
+  }
+  const maxLoan1=loanFromMonthly(revM)/10000;
+  const maxLoan2=loanFromMonthly(maxByRatio)/10000;
+  const useLoan=Math.min(maxLoan1,maxLoan2);
+  const down=getVal('down');
+  const el=document.getElementById('reverse-result');
+  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:${maxByRatio<revM?'0':'0'}px">
+    <div class="card"><div class="card-label">月返済額ベースの借入可能額</div><div class="card-value ok">${Math.round(useLoan).toLocaleString()}万円</div><div class="card-sub">月${fmtM(Math.min(revM,maxByRatio))}万円返済の場合</div></div>
+    <div class="card"><div class="card-label">頭金込みの購入可能目安</div><div class="card-value ok">${(Math.round(useLoan)+Math.round(down)).toLocaleString()}万円</div><div class="card-sub">頭金${Math.round(down).toLocaleString()}万円を含む</div></div>
+  </div>
+  ${maxByRatio<revM?`<div class="advice warn" style="margin-top:10px">年収${fmt(income)}万円・返済比率${revRatio}%の上限は月${fmtM(maxByRatio)}万円です。入力した月返済額が上限を超えているため、上限値で試算しています。</div>`:''}`;
+
+  const guide=document.getElementById('income-guide');
+  guide.innerHTML='';
+  [4,5,6,7].forEach(x=>{
+    const lim=income*x;
+    const m=monthlyPayment(lim,rate,years);
+    const ratio=(m*12/income)*100;
+    const cls=ratio<=25?'ok':ratio<=35?'warn':'ng';
+    const color=cls==='ok'?'#1d9e75':cls==='warn'?'#ba7517':'#a32d2d';
+    guide.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid #e8e7e2;flex-wrap:wrap">
+      <span style="font-size:13px;color:#5f5e5a;width:70px;flex-shrink:0">年収×${x}倍</span>
+      <span style="font-weight:500;width:80px;flex-shrink:0">${fmt(lim)}万円</span>
+      <span style="font-size:13px;color:#5f5e5a">月${fmtM(m)}万円</span>
+      <span style="font-size:13px;color:${color};font-weight:500">返済比率 ${(Math.round(ratio*10)/10).toFixed(1)}%</span>
+    </div>`;
+  });
+}
+
+calc();
+</script>
+</body>
+</html>
