@@ -396,8 +396,8 @@ function calcMisc() {
   if(price<=0) return;
   const items=[
     {name:'仲介手数料（税込）',amt:price*0.033+6.6,note:'売買価格×3%+6万円（税込）'},
-    {name:'登記費用（概算）',amt:price*0.15,note:'所有権移転・抵当権設定など'},
-    {name:'住宅ローン諸費用',amt:price*0.0165,note:'事務手数料・保証料など'},
+    {name:'登記費用（概算）',amt:price*0.01,note:'所有権移転・抵当権設定など'},
+    {name:'住宅ローン諸費用',amt:(price-down)*0.025,note:'事務手数料・保証料など（借入金額×2.5%）'},
     {name:'火災保険（10年）',amt:20,note:'建物・家財の目安'},
     {name:'印紙税・その他',amt:5,note:'売買契約書・金消契約書等'},
   ];
